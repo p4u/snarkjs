@@ -23,6 +23,7 @@ import {createBinFile, endWriteSection, readBinFile, startWriteSection, writeBig
 import {log2} from "./misc.js";
 import {BigBuffer, Scalar} from "ffjavascript";
 import BigArray from "./bigarray.js";
+import * as curves from "./curves.js";
 import {
     ZKEY_FF_HEADER_SECTION,
     ZKEY_FF_ADDITIONS_SECTION,
@@ -75,7 +76,14 @@ export default async function fflonkSetup(r1csFilename, ptauFilename, zkeyFilena
     // Read r1cs file
     if (logger) logger.info("> Reading r1cs file");
     const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile(r1csFilename, "r1cs", 1, 1 << 22, 1 << 24);
-    const r1cs = await readR1csFd(fdR1cs, sectionsR1cs, {loadConstraints: false, loadCustomGates: true});
+    const r1cs = await readR1csFd(fdR1cs, sectionsR1cs, {
+        loadConstraints: false,
+        loadCustomGates: true,
+        getCurveFromPrime: async (prime, singleThread) => {
+            if (prime === curve.r) return curve;
+            return await curves.getCurveFromR(prime, { singleThread });
+        },
+    });
 
     // Potential error checks
     if (r1cs.prime !== curve.r) {
@@ -556,5 +564,4 @@ export default async function fflonkSetup(r1csFilename, ptauFilename, zkeyFilena
         return Fr.exp(firstRoot, 2 ** (28 - power));
     }
 }
-
 

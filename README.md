@@ -88,7 +88,7 @@ snarkjs powersoftau new bn128 14 pot14_0000.ptau -v
 
 The `new` command is used to start a powers of tau ceremony.
 
-The first parameter after `new` refers to the type of curve you wish to use. At the moment, we support both `bn128` and `bls12-381`.
+The first parameter after `new` refers to the type of curve you wish to use. At the moment, we support `bn128`, `bls12-381`, and `bls12-377`.
 
 The second parameter, in this case `14`, is the power of two of the maximum number of constraints that the ceremony can accept: in this case, the number of constraints is `2 ^ 14 = 16,384`. The maximum value supported here is `28`, which means you can use `snarkjs` to securely generate zk-snark parameters for circuits with up to `2 ^ 28` (≈268 million) constraints.
 

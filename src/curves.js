@@ -1,10 +1,12 @@
-import { Scalar, buildBn128, buildBls12381} from "ffjavascript";
+import { Scalar, buildBn128, buildBls12381, buildBls12377 } from "ffjavascript";
 
 const bls12381r = Scalar.e("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
 const bn128r = Scalar.e("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+const bls12377r = Scalar.e("12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001", 16);
 
 const bls12381q = Scalar.e("1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab", 16);
 const bn128q = Scalar.e("21888242871839275222246405745257275088696311157297823662689037894645226208583");
+const bls12377q = Scalar.e("01ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001", 16);
 
 export async function getCurveFromR(r, options) {
     let curve;
@@ -14,6 +16,8 @@ export async function getCurveFromR(r, options) {
         curve = await buildBn128(singleThread);
     } else if (Scalar.eq(r, bls12381r)) {
         curve = await buildBls12381(singleThread);
+    } else if (Scalar.eq(r, bls12377r)) {
+        curve = await buildBls12377(singleThread);
     } else {
         throw new Error(`Curve not supported: ${Scalar.toString(r)}`);
     }
@@ -27,6 +31,8 @@ export async function getCurveFromQ(q, options) {
         curve = await buildBn128(singleThread);
     } else if (Scalar.eq(q, bls12381q)) {
         curve = await buildBls12381(singleThread);
+    } else if (Scalar.eq(q, bls12377q)) {
+        curve = await buildBls12377(singleThread);
     } else {
         throw new Error(`Curve not supported: ${Scalar.toString(q)}`);
     }
@@ -41,6 +47,8 @@ export async function getCurveFromName(name, options) {
         curve = await buildBn128(singleThread);
     } else if (["BLS12381"].indexOf(normName) >= 0) {
         curve = await buildBls12381(singleThread);
+    } else if (["BLS12377"].indexOf(normName) >= 0) {
+        curve = await buildBls12377(singleThread);
     } else {
         throw new Error(`Curve not supported: ${name}`);
     }
@@ -51,4 +59,3 @@ export async function getCurveFromName(name, options) {
     }
 
 }
-

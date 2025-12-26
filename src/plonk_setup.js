@@ -32,6 +32,7 @@ import {
 import { log2  } from "./misc.js";
 import { Scalar, BigBuffer } from "ffjavascript";
 import BigArray from "./bigarray.js";
+import * as curves from "./curves.js";
 
 
 export default async function plonkSetup(r1csName, ptauName, zkeyName, logger) {
@@ -42,7 +43,14 @@ export default async function plonkSetup(r1csName, ptauName, zkeyName, logger) {
     const {curve, power} = await utils.readPTauHeader(fdPTau, sectionsPTau);
     const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile(r1csName, "r1cs", 1, 1<<22, 1<<24);
 
-    const r1cs = await readR1csFd(fdR1cs, sectionsR1cs, {loadConstraints: true, loadCustomGates: true});
+    const r1cs = await readR1csFd(fdR1cs, sectionsR1cs, {
+        loadConstraints: true,
+        loadCustomGates: true,
+        getCurveFromPrime: async (prime, singleThread) => {
+            if (prime === curve.r) return curve;
+            return await curves.getCurveFromR(prime, { singleThread });
+        },
+    });
 
     const sG1 = curve.G1.F.n8*2;
     const G1 = curve.G1;
@@ -502,5 +510,4 @@ export default async function plonkSetup(r1csName, ptauName, zkeyName, logger) {
         }
     }
 }
-
 

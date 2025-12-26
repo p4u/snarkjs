@@ -22,6 +22,7 @@ import { readR1cs }  from "r1csfile";
 
 const bls12381r = Scalar.e("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
 const bn128r = Scalar.e("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+const bls12377r = Scalar.e("12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001", 16);
 
 export default async function r1csInfo(r1csName, logger) {
 
@@ -31,6 +32,8 @@ export default async function r1csInfo(r1csName, logger) {
         if (logger) logger.info("Curve: bn-128");
     } else if (Scalar.eq(cir.prime, bls12381r)) {
         if (logger) logger.info("Curve: bls12-381");
+    } else if (Scalar.eq(cir.prime, bls12377r)) {
+        if (logger) logger.info("Curve: bls12-377");
     } else {
         if (logger) logger.info(`Unknown Curve. Prime: ${Scalar.toString(cir.prime)}`);
     }

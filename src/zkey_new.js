@@ -31,6 +31,7 @@ import { log2, formatHash } from "./misc.js";
 import { Scalar, BigBuffer } from "ffjavascript";
 import { blake2b } from "@noble/hashes/blake2b";
 import BigArray from "./bigarray.js";
+import * as curves from "./curves.js";
 
 
 export default async function newZKey(r1csName, ptauName, zkeyName, logger) {
@@ -44,7 +45,13 @@ export default async function newZKey(r1csName, ptauName, zkeyName, logger) {
     const {fd: fdPTau, sections: sectionsPTau} = await readBinFile(ptauName, "ptau", 1, 1<<22, 1<<24);
     const {curve, power} = await utils.readPTauHeader(fdPTau, sectionsPTau);
     const {fd: fdR1cs, sections: sectionsR1cs} = await readBinFile(r1csName, "r1cs", 1, 1<<22, 1<<24);
-    const r1cs = await readR1csHeader(fdR1cs, sectionsR1cs, false);
+    const r1cs = await readR1csHeader(fdR1cs, sectionsR1cs, {
+        singleThread: false,
+        getCurveFromPrime: async (prime, singleThread) => {
+            if (prime === curve.r) return curve;
+            return await curves.getCurveFromR(prime, { singleThread });
+        },
+    });
 
     const fdZKey = await createBinFile(zkeyName, "zkey", 1, 10, 1<<22, 1<<24);
 
@@ -584,5 +591,4 @@ export default async function newZKey(r1csName, ptauName, zkeyName, logger) {
     }
 
 }
-
 

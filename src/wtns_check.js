@@ -33,7 +33,11 @@ export default async function wtnsCheck(r1csFilename, wtnsFilename, logger) {
         fd: fdR1cs,
         sections: sectionsR1cs
     } = await binFileUtils.readBinFile(r1csFilename, "r1cs", 1, 1 << 22, 1 << 24);
-    const r1cs = await readR1csFd(fdR1cs, sectionsR1cs, { loadConstraints: false, loadCustomGates: false });
+    const r1cs = await readR1csFd(fdR1cs, sectionsR1cs, {
+        loadConstraints: false,
+        loadCustomGates: false,
+        getCurveFromPrime: async (prime, singleThread) => curves.getCurveFromR(prime, { singleThread }),
+    });
 
     // Read witness file
     if (logger) logger.info("> Reading witness file");
@@ -50,7 +54,7 @@ export default async function wtnsCheck(r1csFilename, wtnsFilename, logger) {
     const buffWitness = await binFileUtils.readSection(fdWtns, wtnsSections, 2);
     await fdWtns.close();
 
-    const curve = await curves.getCurveFromR(r1cs.prime);
+    const curve = r1cs.curve ?? await curves.getCurveFromR(r1cs.prime);
     const Fr = curve.Fr;
     const sFr = Fr.n8;
 
@@ -91,7 +95,7 @@ export default async function wtnsCheck(r1csFilename, wtnsFilename, logger) {
 
         // Check that A * B - C == 0
         if (!Fr.eq(Fr.sub(Fr.mul(evalA, evalB), evalC), Fr.zero)) {
-            logger.warn("··· aborting checking process at constraint " + i);
+            if (logger) logger.warn("··· aborting checking process at constraint " + i);
             res = false;
             break;
         }
