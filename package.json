@@ -40,6 +40,10 @@
   "directories": {
     "templates": "templates"
   },
+  "workspaces": [
+    "ffjavascript",
+    "wasmcurves"
+  ],
   "keywords": [
     "zksnark",
     "zcash",

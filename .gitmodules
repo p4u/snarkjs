@@ -1,0 +1,6 @@
+[submodule "ffjavascript"]
+	path = ffjavascript
+	url = git@github.com:p4u/ffjavascript.git
+[submodule "wasmcurves"]
+	path = wasmcurves
+	url = git@github.com:p4u/wasmcurves.git
