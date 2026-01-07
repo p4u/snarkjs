@@ -171,6 +171,7 @@ function r1csPrint$1(r1cs, syms, logger) {
 
 const bls12381r$1 = ffjavascript.Scalar.e("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
 const bn128r$1 = ffjavascript.Scalar.e("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+const bls12377r$1 = ffjavascript.Scalar.e("12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001", 16);
 
 async function r1csInfo$1(r1csName, logger) {
 
@@ -180,6 +181,8 @@ async function r1csInfo$1(r1csName, logger) {
         if (logger) logger.info("Curve: bn-128");
     } else if (ffjavascript.Scalar.eq(cir.prime, bls12381r$1)) {
         if (logger) logger.info("Curve: bls12-381");
+    } else if (ffjavascript.Scalar.eq(cir.prime, bls12377r$1)) {
+        if (logger) logger.info("Curve: bls12-377");
     } else {
         if (logger) logger.info(`Unknown Curve. Prime: ${ffjavascript.Scalar.toString(cir.prime)}`);
     }
@@ -801,9 +804,11 @@ function createPTauKey(curve, challengeHash, rng) {
 
 const bls12381r = ffjavascript.Scalar.e("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", 16);
 const bn128r = ffjavascript.Scalar.e("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+const bls12377r = ffjavascript.Scalar.e("12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001", 16);
 
 const bls12381q = ffjavascript.Scalar.e("1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab", 16);
 const bn128q = ffjavascript.Scalar.e("21888242871839275222246405745257275088696311157297823662689037894645226208583");
+const bls12377q = ffjavascript.Scalar.e("01ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001", 16);
 
 async function getCurveFromR(r, options) {
     let curve;
@@ -813,6 +818,8 @@ async function getCurveFromR(r, options) {
         curve = await ffjavascript.buildBn128(singleThread);
     } else if (ffjavascript.Scalar.eq(r, bls12381r)) {
         curve = await ffjavascript.buildBls12381(singleThread);
+    } else if (ffjavascript.Scalar.eq(r, bls12377r)) {
+        curve = await ffjavascript.buildBls12377(singleThread);
     } else {
         throw new Error(`Curve not supported: ${ffjavascript.Scalar.toString(r)}`);
     }
@@ -826,6 +833,8 @@ async function getCurveFromQ(q, options) {
         curve = await ffjavascript.buildBn128(singleThread);
     } else if (ffjavascript.Scalar.eq(q, bls12381q)) {
         curve = await ffjavascript.buildBls12381(singleThread);
+    } else if (ffjavascript.Scalar.eq(q, bls12377q)) {
+        curve = await ffjavascript.buildBls12377(singleThread);
     } else {
         throw new Error(`Curve not supported: ${ffjavascript.Scalar.toString(q)}`);
     }
@@ -840,6 +849,8 @@ async function getCurveFromName(name, options) {
         curve = await ffjavascript.buildBn128(singleThread);
     } else if (["BLS12381"].indexOf(normName) >= 0) {
         curve = await ffjavascript.buildBls12381(singleThread);
+    } else if (["BLS12377"].indexOf(normName) >= 0) {
+        curve = await ffjavascript.buildBls12377(singleThread);
     } else {
         throw new Error(`Curve not supported: ${name}`);
     }
@@ -3168,7 +3179,13 @@ async function newZKey(r1csName, ptauName, zkeyName, logger) {
     const {fd: fdPTau, sections: sectionsPTau} = await binFileUtils.readBinFile(ptauName, "ptau", 1, 1<<22, 1<<24);
     const {curve, power} = await readPTauHeader(fdPTau, sectionsPTau);
     const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils.readBinFile(r1csName, "r1cs", 1, 1<<22, 1<<24);
-    const r1cs = await r1csfile.readR1csHeader(fdR1cs, sectionsR1cs, false);
+    const r1cs = await r1csfile.readR1csHeader(fdR1cs, sectionsR1cs, {
+        singleThread: false,
+        getCurveFromPrime: async (prime, singleThread) => {
+            if (prime === curve.r) return curve;
+            return await getCurveFromR(prime, { singleThread });
+        },
+    });
 
     const fdZKey = await binFileUtils.createBinFile(zkeyName, "zkey", 1, 10, 1<<22, 1<<24);
 
@@ -6313,7 +6330,14 @@ async function plonkSetup$1(r1csName, ptauName, zkeyName, logger) {
     const {curve, power} = await readPTauHeader(fdPTau, sectionsPTau);
     const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils.readBinFile(r1csName, "r1cs", 1, 1<<22, 1<<24);
 
-    const r1cs = await r1csfile.readR1csFd(fdR1cs, sectionsR1cs, {loadConstraints: true, loadCustomGates: true});
+    const r1cs = await r1csfile.readR1csFd(fdR1cs, sectionsR1cs, {
+        loadConstraints: true,
+        loadCustomGates: true,
+        getCurveFromPrime: async (prime, singleThread) => {
+            if (prime === curve.r) return curve;
+            return await getCurveFromR(prime, { singleThread });
+        },
+    });
 
     const sG1 = curve.G1.F.n8*2;
     const G1 = curve.G1;
@@ -9862,7 +9886,14 @@ async function fflonkSetup$1(r1csFilename, ptauFilename, zkeyFilename, logger) {
     // Read r1cs file
     if (logger) logger.info("> Reading r1cs file");
     const {fd: fdR1cs, sections: sectionsR1cs} = await binFileUtils.readBinFile(r1csFilename, "r1cs", 1, 1 << 22, 1 << 24);
-    const r1cs = await r1csfile.readR1csFd(fdR1cs, sectionsR1cs, {loadConstraints: false, loadCustomGates: true});
+    const r1cs = await r1csfile.readR1csFd(fdR1cs, sectionsR1cs, {
+        loadConstraints: false,
+        loadCustomGates: true,
+        getCurveFromPrime: async (prime, singleThread) => {
+            if (prime === curve.r) return curve;
+            return await getCurveFromR(prime, { singleThread });
+        },
+    });
 
     // Potential error checks
     if (r1cs.prime !== curve.r) {
@@ -12401,7 +12432,11 @@ async function wtnsCheck$1(r1csFilename, wtnsFilename, logger) {
         fd: fdR1cs,
         sections: sectionsR1cs
     } = await binFileUtils__namespace.readBinFile(r1csFilename, "r1cs", 1, 1 << 22, 1 << 24);
-    const r1cs = await r1csfile.readR1csFd(fdR1cs, sectionsR1cs, { loadConstraints: false, loadCustomGates: false });
+    const r1cs = await r1csfile.readR1csFd(fdR1cs, sectionsR1cs, {
+        loadConstraints: false,
+        loadCustomGates: false,
+        getCurveFromPrime: async (prime, singleThread) => getCurveFromR(prime, { singleThread }),
+    });
 
     // Read witness file
     if (logger) logger.info("> Reading witness file");
@@ -12418,7 +12453,7 @@ async function wtnsCheck$1(r1csFilename, wtnsFilename, logger) {
     const buffWitness = await binFileUtils__namespace.readSection(fdWtns, wtnsSections, 2);
     await fdWtns.close();
 
-    const curve = await getCurveFromR(r1cs.prime);
+    const curve = r1cs.curve ?? await getCurveFromR(r1cs.prime);
     const Fr = curve.Fr;
     const sFr = Fr.n8;
 
@@ -12459,7 +12494,7 @@ async function wtnsCheck$1(r1csFilename, wtnsFilename, logger) {
 
         // Check that A * B - C == 0
         if (!Fr.eq(Fr.sub(Fr.mul(evalA, evalB), evalC), Fr.zero)) {
-            logger.warn("··· aborting checking process at constraint " + i);
+            if (logger) logger.warn("··· aborting checking process at constraint " + i);
             res = false;
             break;
         }
